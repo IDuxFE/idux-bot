@@ -2,9 +2,9 @@
   "name": "idux-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "A Probot app",
+  "description": "Idux Bot is a bot that helps the project by doing all kind of administrative tasks on our PR and issues.",
   "author": "danranVm <danranvm@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "homepage": "https://github.com/IduxFE/idux-bot",
   "keywords": [
     "probot",
@@ -12,18 +12,24 @@
     "probot-app"
   ],
   "scripts": {
-    "build": "tsc",
+    "dev": "nodemon --exec \"npm start\"",
+    "build": "tsc -p tsconfig.json",
     "start": "probot run ./lib/index.js",
     "test": "jest"
   },
   "dependencies": {
+    "@vitalets/google-translate-api": "^5.0.0",
+    "axios": "^0.21.1",
+    "lodash": "^4.17.21",
     "probot": "^11.0.1"
   },
   "devDependencies": {
     "@types/jest": "^26.0.19",
+    "@types/lodash": "^4.14.168",
     "@types/node": "^14.14.19",
     "jest": "^26.6.3",
     "nock": "^13.0.5",
+    "nodemon": "^2.0.7",
     "smee-client": "^1.2.2",
     "ts-jest": "^26.4.4",
     "typescript": "^4.1.3"

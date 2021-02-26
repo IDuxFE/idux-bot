@@ -1,6 +1,7 @@
 # idux-bot
 
 > A GitHub App built with [Probot](https://github.com/probot/probot) that A Probot app
+> Inspired by [zorro-bot](https://github.com/NG-ZORRO/zorro-bot) 😍.
 
 ## Setup
 
@@ -30,4 +31,4 @@ For more, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 
-[ISC](LICENSE) © 2021 danranVm <danranvm@gmail.com>
+[MIT](LICENSE) © 2021 IduxFE
