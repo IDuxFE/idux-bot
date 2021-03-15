@@ -12,7 +12,7 @@ export async function onIssuesOpened(context: Context): Promise<void> {
 
   const isValid = await validIssue(context, config)
   if (isValid) {
-    await addIssueLabels(context)
+    await addLabels(context, false)
     await translateIssue(context, config)
   }
 }
@@ -30,6 +30,7 @@ export async function onPullRequestOpened(context: Context): Promise<void> {
   if (!config) return
 
   await commentPreview(context, config)
+  await addLabels(context, true)
 }
 
 export async function onPullRequestLabeled(context: Context): Promise<void> {
@@ -68,14 +69,18 @@ async function validIssue(context: Context, config: Config) {
   return true
 }
 
-async function addIssueLabels(context: Context) {
+async function addLabels(context: Context, isPR: boolean) {
   const { title, number } = context.payload.issue
-  const titleMathResult = title.match(/\[(.*)\]/)
+  const titleReg = isPR ? /\((.*)\)\:/ : /\[(.*)\]/
+  const titleMathResult = title.match(titleReg)
 
   if (titleMathResult) {
     const title = titleMathResult[1] as string
     const [module, name = ''] = title.split(':').map(item => item.trim())
-    const labels = name.split(',').map(item => upperFirst(module) + ':' + upperFirst(item))
+    let labels = [module]
+    if (name.length > 0) {
+      labels = name.split(',').map(item => upperFirst(module) + ':' + upperFirst(item))
+    }
 
     context.log.trace({ number, labels }, 'adding issue label...')
     try {
@@ -94,10 +99,19 @@ async function translateIssue(context: Context, config: Config) {
   if (body.includes(mark)) {
     const translateOptions = { from: 'zh-CN', to: 'en' }
     const translatedTitle = await translate(title, translateOptions)
-    const translatedBody = await translate(body.replace(/<!--(.*?)-->/g, ''), translateOptions)
+    const placeholder = '{{placeholder}}'
+    const codeBlock = (body as string).match(/```(.*?)```/g)
+    const translatedBody = await translate(
+      body.replace(/```(.*?)```/g, placeholder).replace(/<!--(.*?)-->/g, ''),
+      translateOptions,
+    )
 
     if (translatedTitle.text && translatedBody.text) {
-      const content = format(replay, { title: translatedTitle.text, body: translatedBody.text })
+      let bodyText = translatedBody.text
+      if (codeBlock) {
+        bodyText.replaceAll(placeholder, () => codeBlock.shift()!)
+      }
+      const content = format(replay, { title: translatedTitle.text, body: bodyText })
       const comment = context.issue({ body: content })
 
       context.log.trace({ number, comment }, 'translating issue...')
@@ -136,22 +150,25 @@ async function replyLabeled(context: Context, config: Config) {
 }
 
 async function assignOwner(context: Context, config: Config) {
-  const { cdk, comp, pro, def } = config.issue.owner
+  const { cdk, comp, pro } = config.issue.owner
   const label = context.payload.label.name as string
 
   const [packageName, componentName = ''] = label.split(':')
 
-  let targetPackage: Record<string, string> = { def }
+  let targetPackage: Record<string, string> = {}
 
   if (packageName === 'Cdk') {
     targetPackage = cdk
   } else if (packageName === 'Comp') {
     targetPackage = comp
-  } else if (packageName === 'pro') {
+  } else if (packageName === 'Pro') {
     targetPackage = pro
   }
 
-  const assigner = targetPackage[componentName] || targetPackage.def
+  const assigner = targetPackage[componentName]
+  if (!assigner) {
+    return
+  }
 
   const number = context.payload.issue?.number || context.payload.number
   context.log.trace({ number, label }, 'assigning owner...')
