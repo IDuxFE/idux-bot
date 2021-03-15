@@ -77,9 +77,11 @@ async function addLabels(context: Context, isPR: boolean) {
   if (titleMathResult) {
     const title = titleMathResult[1] as string
     const [module, name = ''] = title.split(':').map(item => item.trim())
-    let labels = [module]
+    let labels: string[]
     if (name.length > 0) {
       labels = name.split(',').map(item => upperFirst(module) + ':' + upperFirst(item))
+    } else {
+      labels = [upperFirst(module)]
     }
 
     context.log.trace({ number, labels }, 'adding issue label...')
@@ -99,17 +101,18 @@ async function translateIssue(context: Context, config: Config) {
   if (body.includes(mark)) {
     const translateOptions = { from: 'zh-CN', to: 'en' }
     const translatedTitle = await translate(title, translateOptions)
-    const placeholder = '{{placeholder}}'
-    const codeBlock = (body as string).match(/```(.*?)```/g)
+    const placeholder = '{{---}}'
+    const codeBlock = (body as string).match(/```([\s\S]*?)```/g)
     const translatedBody = await translate(
-      body.replace(/```(.*?)```/g, placeholder).replace(/<!--(.*?)-->/g, ''),
+      body.replace(/```([\s\S]*?)```/g, placeholder).replace(/<!--(.*?)-->/g, ''),
       translateOptions,
     )
-
     if (translatedTitle.text && translatedBody.text) {
       let bodyText = translatedBody.text
       if (codeBlock) {
-        bodyText.replaceAll(placeholder, () => codeBlock.shift()!)
+        codeBlock.forEach(item => {
+          bodyText = bodyText.replace(placeholder, item)
+        })
       }
       const content = format(replay, { title: translatedTitle.text, body: bodyText })
       const comment = context.issue({ body: content })
@@ -165,7 +168,7 @@ async function assignOwner(context: Context, config: Config) {
     targetPackage = pro
   }
 
-  const assigner = targetPackage[componentName]
+  const assigner = targetPackage[componentName] || targetPackage.def
   if (!assigner) {
     return
   }
